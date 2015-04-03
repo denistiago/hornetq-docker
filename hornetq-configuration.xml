@@ -1,0 +1,98 @@
+<configuration xmlns="urn:hornetq"
+               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+               xsi:schemaLocation="urn:hornetq /schema/hornetq-configuration.xsd">
+   <!--
+   if you want to run this as a backup on different ports you would need to set the following variable
+   export CLUSTER_PROPS="-Djnp.port=1199 -Djnp.rmiPort=1198 -Djnp.host=0.0.0.0 -Dhornetq.remoting.netty.host=0.0.0.0 -Dhornetq.remoting.netty.port=5545 -Dhornetq.remoting.netty.batch.port=5555 -Dhornetq.backup=true"
+   -->
+   <shared-store>true</shared-store>
+   <security-enabled>false</security-enabled>
+
+   <backup>${hornetq.backup:false}</backup>
+
+   <paging-directory>${data.dir:/fila}/paging</paging-directory>
+   
+   <bindings-directory>${data.dir:/fila}/bindings</bindings-directory>
+   
+   <journal-directory>${data.dir:/fila}/journal</journal-directory>
+   
+   <journal-min-files>10</journal-min-files>
+   <journal-type>NIO</journal-type>
+   
+   <large-messages-directory>${data.dir:/fila}/large-messages</large-messages-directory>
+
+   <connectors>      
+      <connector name="netty">
+         <factory-class>org.hornetq.core.remoting.impl.netty.NettyConnectorFactory</factory-class>
+         <param key="host"  value="${hornetq.remoting.netty.host:0.0.0.0}"/>
+         <param key="port"  value="${hornetq.remoting.netty.port:5445}"/>
+      </connector>
+      
+      <connector name="netty-throughput">
+         <factory-class>org.hornetq.core.remoting.impl.netty.NettyConnectorFactory</factory-class>
+         <param key="host"  value="${hornetq.remoting.netty.host:0.0.0.0}"/>
+         <param key="port"  value="${hornetq.remoting.netty.batch.port:5455}"/>
+         <param key="batch-delay" value="50"/>
+      </connector>
+   </connectors>
+
+   <acceptors>
+      <acceptor name="netty">
+         <factory-class>org.hornetq.core.remoting.impl.netty.NettyAcceptorFactory</factory-class>
+         <param key="host"  value="${hornetq.remoting.netty.host:0.0.0.0}"/>
+         <param key="port"  value="${hornetq.remoting.netty.port:5445}"/>
+      </acceptor>
+      
+      <acceptor name="netty-throughput">
+         <factory-class>org.hornetq.core.remoting.impl.netty.NettyAcceptorFactory</factory-class>
+         <param key="host"  value="${hornetq.remoting.netty.host:0.0.0.0}"/>
+         <param key="port"  value="${hornetq.remoting.netty.batch.port:5455}"/>
+         <param key="batch-delay" value="50"/>
+         <param key="direct-deliver" value="false"/>
+      </acceptor>
+   </acceptors>
+
+   <broadcast-groups>
+      <broadcast-group name="bc-prod01">
+         <group-address>231.7.7.7</group-address>
+         <group-port>9876</group-port>
+         <broadcast-period>5000</broadcast-period>
+         <connector-ref>netty</connector-ref>
+      </broadcast-group>
+   </broadcast-groups>
+
+   <discovery-groups>
+      <discovery-group name="d-prod01">
+         <group-address>231.7.7.7</group-address>
+         <group-port>9876</group-port>
+         <refresh-timeout>10000</refresh-timeout>
+      </discovery-group>
+   </discovery-groups>
+   
+   <cluster-connections>
+      <cluster-connection name="c-prod01">
+         <address>jms</address>  
+         <connector-ref>netty</connector-ref>
+         <discovery-group-ref discovery-group-name="d-prod01"/>
+      </cluster-connection>
+   </cluster-connections>
+
+   <address-settings>
+
+     <address-setting match="jms.queue.example">
+         <redelivery-delay>2000</redelivery-delay>
+         <redelivery-delay-multiplier>2.0</redelivery-delay-multiplier>
+         <max-delivery-attempts>10</max-delivery-attempts>
+         <max-redelivery-delay>60000</max-redelivery-delay>
+         <dead-letter-address>jms.queue.DLQ.example</dead-letter-address>
+     </address-setting>
+
+      <!--default for catch all-->
+      <address-setting match="#">
+         <expiry-address>jms.queue.ExpiryQueue</expiry-address>
+         <redelivery-delay>0</redelivery-delay>
+         <message-counter-history-day-limit>10</message-counter-history-day-limit>
+      </address-setting>
+   </address-settings>
+</configuration>
+
